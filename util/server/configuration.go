@@ -6,6 +6,7 @@ import (
 	onetLog "go.dedis.ch/onet/v3/log"
 	"os"
 	"strconv"
+	"strings"
 )
 
 // LogLevel is the log level, assuming the same convention as the cothority / unlynx log levels:
@@ -14,49 +15,35 @@ var LogLevel int
 
 // MedCoNodesURL is the slice of the URL of all the MedCo nodes, with the order matching the position in the slice
 var MedCoNodesURL []string
-
-// MedCoNodeIdx is the index of this node in the list of nodes, it is equal to UnlynxGroupFileIdx
+// MedCoNodeIdx is the index of this node in the list of nodes
 var MedCoNodeIdx int
 
 // UnlynxGroupFilePath is the path of the unlynx group file from which is derived the cothority public key
 var UnlynxGroupFilePath string
-
-// UnlynxGroupFileIdx is the index (in the group file) of this node, it is equal to MedCoNodeIdx
-var UnlynxGroupFileIdx int
-
 // UnlynxTimeoutSeconds is the unlynx communication timeout (seconds)
 var UnlynxTimeoutSeconds int
 
 // I2b2HiveURL is the URL of the i2b2 hive this connector is using
 var I2b2HiveURL string
-
 // I2b2LoginDomain is the i2b2 login domain
 var I2b2LoginDomain string
-
 // I2b2LoginProject is the i2b2 login project
 var I2b2LoginProject string
-
 // I2b2LoginUser is the i2b2 login user
 var I2b2LoginUser string
-
 // I2b2LoginPassword is the i2b2 login password
 var I2b2LoginPassword string
-
 // I2b2WaitTimeSeconds is the i2b2 timeout (seconds)
 var I2b2WaitTimeSeconds int
 
 // JwksURL is the URL from which the JWT signing keys are retrieved
 var JwksURL string
-
 // JwksTTLSeconds is the TTL of JWKS requests
 var JwksTTLSeconds int64
-
 // OidcJwtIssuer is the token issuer (for JWT validation)
 var OidcJwtIssuer string
-
 // OidcClientID is the OIDC client ID
 var OidcClientID string
-
 // OidcJwtUserIDClaim is the JWT claim containing the user ID
 var OidcJwtUserIDClaim string
 
@@ -65,24 +52,28 @@ var MedCoObfuscationMin int
 
 // DBMSAddress is the host of the DBMS
 var DBMSHost string
-
 // DBMSPort is the number of the port used by the DBMS
 var DBMSPort int
-
 // DBName is the name of the database
 var DBName string
-
 // DBLoginUser is the database login user
 var DBLoginUser string
-
 // DBLoginPassword is the database login password
 var DBLoginPassword string
-
 //
 var DBConnection *sql.DB
 
 func init() {
 	SetLogLevel(os.Getenv("LOG_LEVEL"))
+
+	MedCoNodesURL = strings.Split(os.Getenv("MEDCO_NODES_URL"), ",")
+
+	idx, err := strconv.ParseInt(os.Getenv("MEDCO_NODE_IDX"), 10, 64)
+	if err != nil || idx < 0 {
+		logrus.Warn("invalid MedCoNodeIdx")
+		idx = 0
+	}
+	MedCoNodeIdx = int(idx)
 
 	UnlynxGroupFilePath = os.Getenv("UNLYNX_GROUP_FILE_PATH")
 
@@ -92,13 +83,6 @@ func init() {
 		unlynxto = 3 * 60 // 3 minutes
 	}
 	UnlynxTimeoutSeconds = int(unlynxto)
-
-	idx, err := strconv.ParseInt(os.Getenv("UNLYNX_GROUP_FILE_IDX"), 10, 64)
-	if err != nil || idx < 0 {
-		logrus.Warn("invalid UnlynxGroupFileIdx")
-		idx = 0
-	}
-	UnlynxGroupFileIdx = int(idx)
 
 	I2b2HiveURL = os.Getenv("I2B2_HIVE_URL")
 	I2b2LoginDomain = os.Getenv("I2B2_LOGIN_DOMAIN")
