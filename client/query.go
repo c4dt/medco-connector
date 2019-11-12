@@ -7,8 +7,8 @@ import (
 	"github.com/ldsec/medco-connector/restapi/client"
 	"github.com/ldsec/medco-connector/restapi/client/picsure2"
 	"github.com/ldsec/medco-connector/restapi/models"
-	"github.com/ldsec/medco-connector/unlynx"
 	utilclient "github.com/ldsec/medco-connector/util/client"
+	"github.com/ldsec/medco-connector/wrappers/unlynx"
 	"github.com/sirupsen/logrus"
 	"net/http"
 	"net/url"
@@ -37,15 +37,15 @@ type Query struct {
 	userPrivateKey string
 
 	// queryType is the type of query requested
-	queryType models.QueryType
+	queryType models.ExploreQueryType
 	// encPanelsItemKeys is part of the query: contains the encrypted item keys organized by panel
 	encPanelsItemKeys [][]string
 	// panelsIsNot is part of the query: indicates which panels are negated
-	panelsIsNot       []bool
+	panelsIsNot []bool
 }
 
 // NewQuery creates a new MedCo client query
-func NewQuery(authToken string, queryType models.QueryType, encPanelsItemKeys [][]string, panelsIsNot []bool, disableTLSCheck bool, bypassPicsure bool) (q *Query, err error) {
+func NewQuery(authToken string, queryType models.ExploreQueryType, encPanelsItemKeys [][]string, panelsIsNot []bool, disableTLSCheck bool, bypassPicsure bool) (q *Query, err error) {
 
 	transport := httptransport.New(utilclient.Picsure2APIHost, utilclient.Picsure2APIBasePath, []string{utilclient.Picsure2APIScheme})
 	transport.Transport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: disableTLSCheck}
@@ -56,11 +56,11 @@ func NewQuery(authToken string, queryType models.QueryType, encPanelsItemKeys []
 		picsureResourceNames: utilclient.Picsure2Resources,
 		picsureResourceUUIDs: []string{},
 		authToken:            authToken,
-		bypassPicsure:	      bypassPicsure,
+		bypassPicsure:        bypassPicsure,
 
-		queryType: queryType,
+		queryType:         queryType,
 		encPanelsItemKeys: encPanelsItemKeys,
-		panelsIsNot: panelsIsNot,
+		panelsIsNot:       panelsIsNot,
 	}
 
 	// retrieve resources information
@@ -79,9 +79,9 @@ func NewQuery(authToken string, queryType models.QueryType, encPanelsItemKeys []
 }
 
 // Execute executes the MedCo client query synchronously on all the nodes through PIC-SURE
-func (clientQuery *Query) Execute() (nodesResult map [string]*QueryResult, err error) {
+func (clientQuery *Query) Execute() (nodesResult map[string]*QueryResult, err error) {
 
-	queryResultsChan := make(chan *models.QueryResultElement)
+	queryResultsChan := make(chan *models.ExploreQueryResultElement)
 	queryErrChan := make(chan error)
 
 	// execute requests on all nodes
@@ -101,8 +101,9 @@ func (clientQuery *Query) Execute() (nodesResult map [string]*QueryResult, err e
 
 	// parse the results as they come, or interrupt if one of them errors, or if a timeout occurs
 	timeout := time.After(time.Duration(utilclient.QueryTimeoutSeconds) * time.Second)
-	nodesResult = make(map [string]*QueryResult)
-	forLoop: for _, picsureResourceName := range clientQuery.picsureResourceNames {
+	nodesResult = make(map[string]*QueryResult)
+forLoop:
+	for _, picsureResourceName := range clientQuery.picsureResourceNames {
 		select {
 		case queryResult := <-queryResultsChan:
 			parsedQueryResult, err := newQueryResult(queryResult, clientQuery.userPrivateKey)
@@ -118,7 +119,7 @@ func (clientQuery *Query) Execute() (nodesResult map [string]*QueryResult, err e
 				return nodesResult, nil
 			}
 
-		case err = <- queryErrChan:
+		case err = <-queryErrChan:
 			logrus.Error("MedCo client query error: ", err)
 			break forLoop
 
@@ -188,7 +189,7 @@ func (clientQuery *Query) submitToNode(picsureResourceIdx int) (result *models.Q
 			MEDCOTOKEN: clientQuery.authToken,
 		},
 		ResourceUUID: clientQuery.picsureResourceUUIDs[picsureResourceIdx],
-		Query: clientQuery.generateModel(),
+		Query:        clientQuery.generateModel(),
 	}
 
 	var response *picsure2.QuerySyncOK
@@ -214,8 +215,8 @@ func (clientQuery *Query) generateModel() (queryModel *models.Query) {
 		Name: "MedCo_CLI_Query_" + time.Now().Format(time.RFC3339),
 		I2b2Medco: &models.QueryI2b2Medco{
 			UserPublicKey: clientQuery.userPublicKey,
-			QueryType: clientQuery.queryType,
-			Panels: []*models.QueryI2b2MedcoPanelsItems0{},
+			QueryType:     clientQuery.queryType,
+			Panels:        []*models.QueryI2b2MedcoPanelsItems0{},
 		},
 	}
 
@@ -224,7 +225,7 @@ func (clientQuery *Query) generateModel() (queryModel *models.Query) {
 
 		panelModel := &models.QueryI2b2MedcoPanelsItems0{
 			Items: []*models.QueryI2b2MedcoPanelsItems0ItemsItems0{},
-			Not: &clientQuery.panelsIsNot[panelIdx],
+			Not:   &clientQuery.panelsIsNot[panelIdx],
 		}
 
 		true := true

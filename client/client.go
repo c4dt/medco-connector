@@ -6,8 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/ldsec/medco-connector/restapi/models"
-	"github.com/ldsec/medco-connector/unlynx"
 	utilclient "github.com/ldsec/medco-connector/util/client"
+	"github.com/ldsec/medco-connector/wrappers/unlynx"
 	"github.com/ldsec/medco-loader/loader/identifiers"
 	"github.com/sirupsen/logrus"
 	"io"
@@ -34,7 +34,7 @@ func ExecuteClientQuery(token, username, password, queryType, queryString, resul
 	}
 
 	// parse query type
-	queryTypeParsed := models.QueryType(queryType)
+	queryTypeParsed := models.ExploreQueryType(queryType)
 	err = queryTypeParsed.Validate(nil)
 	if err != nil {
 		logrus.Error("invalid query type")
@@ -126,12 +126,12 @@ func printResultsCSV(nodesResult map[string]*QueryResult, output io.Writer) (err
 	for csvNodeResultsIdx, csvNodeResults := range csvNodesResults {
 		nodeName := csvNodeResults[0]
 
-		for timerNameIdx := 3 ; timerNameIdx < len(csvHeaders) ; timerNameIdx++ {
+		for timerNameIdx := 3; timerNameIdx < len(csvHeaders); timerNameIdx++ {
 			timerName := csvHeaders[timerNameIdx]
 			timerValue := nodesResult[nodeName].Times[timerName]
 
 			csvNodesResults[csvNodeResultsIdx] = append(csvNodesResults[csvNodeResultsIdx],
-				strconv.FormatInt(int64(timerValue / time.Millisecond), 10))
+				strconv.FormatInt(int64(timerValue/time.Millisecond), 10))
 		}
 	}
 
@@ -193,7 +193,7 @@ func parseQueryString(queryString string) (panelsItemKeys [][]int64, panelsIsNot
 					return nil, nil, intMultiplierErr
 				}
 
-				for i := 0 ; i < int(intMultiplier) ; i++ {
+				for i := 0; i < int(intMultiplier); i++ {
 					itemKeys = append(itemKeys, queryInt)
 				}
 
@@ -207,7 +207,7 @@ func parseQueryString(queryString string) (panelsItemKeys [][]int64, panelsIsNot
 					// if a parsable integer: use as is
 					itemKeys = append(itemKeys, parsedInt)
 
-				// case 3: query file
+					// case 3: query file
 				} else {
 					logrus.Debug("Client query file item: ", queryItem)
 
@@ -266,7 +266,7 @@ func loadQueryFile(queryFilePath string) (queryTerms []int64, err error) {
 			}
 
 		} else {
-			err = errors.New("dataset with "+ string(len(queryTermFields)) + " fields is not supported")
+			err = errors.New("dataset with " + string(len(queryTermFields)) + " fields is not supported")
 			logrus.Error(err)
 			return
 		}
